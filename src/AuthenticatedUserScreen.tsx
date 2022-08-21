@@ -1,4 +1,5 @@
 import * as React from 'react';
+import {useEffect, useState} from 'react';
 import type {NavigationStackProp} from 'react-navigation-stack';
 import {ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, View} from 'react-native';
 import type {
@@ -10,134 +11,97 @@ import style from './style';
 
 import env from './env';
 
-import {Utils} from './Utils';
-
-
-type AuthenticatedUserScreenProps = {
-    navigation: NavigationStackProp<{}>;
-    route: any;
-};
-
-
-interface State {
-    isLoading: boolean;
-    hasError: boolean;
-    errorMessage: string;
-    sortedPassportKeys: string[];
-    passportData: { [key: string]: any };
-}
+import {jsonObjectToArray} from './utils';
 
 interface PassportItem {
     title: string;
     value: any;
 }
 
-export class AuthenticatedUserScreen extends React.Component<AuthenticatedUserScreenProps, State> {
+interface Props {
+    navigation: NavigationStackProp<{}>;
+    route: any;
+}
 
-    constructor(props: AuthenticatedUserScreenProps) {
-        super(props);
-        this.state = {
-            isLoading: true,
-            hasError: false,
-            errorMessage: "",
-            sortedPassportKeys: [],
-            passportData: {}
-        };
-    }
+const AuthenticatedUserScreen: React.FC<Props> = ({navigation, route}) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasError, setHasError] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
+    const [sortedPassportKeys, setSortedPassportKeys] = useState([]);
+    const [passportData, setPassportData] = useState({});
 
-    componentDidMount() {
-        this.parseIDToken();
-    }
+    useEffect(() => {
+        parseIDToken();
+    }, []);
 
-    render() {
-        if (this.state.isLoading) {
-            return this.renderLoading();
-        }
 
-        if (this.state.hasError) {
-            return this.renderError();
-        }
+    const items: PassportItem[] = sortedPassportKeys.map((key: string) => {
 
-        const items: PassportItem[] = this.state.sortedPassportKeys.map((key: string) => {
+        const k = key.toString().split(",")[0]
+        const v = key.toString().split(",")[1]
+        console.log(`key ${k}`);
+        console.log(`value ${v}`);
+        return {title: k, value: v};
+    });
 
-            const k = key.toString().split(",")[0]
-            const v = key.toString().split(",")[1]
-            console.log(`key ${k}`);
-            console.log(`value ${v}`);
-            return {title: k, value: v};
-        });
-
-        return (
-            <SafeAreaView style={styles.container}>
-                <FlatList
-                    data={items}
-                    renderItem={({item}) => this.renderPassportRow(item)}
-                    keyExtractor={({title}) => {
-                        return title
-                    }}
-                />
-            </SafeAreaView>
-        );
-    }
-
-    private parseIDToken = async (): Promise<void> => {
-
-        XmBindIdSdk.exchangeToken(this.props.route.params.response)
+    const parseIDToken = async (): Promise<void> => {
+        XmBindIdSdk.exchangeToken(route.params.response)
             .then((response: XmBindIdExchangeTokenResponse) => {
                 console.log(`BindID Exchange Token Completed: ${JSON.stringify(response)}`);
-                this.handleExchangeResponseResponse(response);
+                handleExchangeResponseResponse(response);
             }).catch((error: XmBindIdError) => {
-            console.log(`BindID AuthenticatExchange Token Falied: ${error.message}`);
-            this.handleError(error);
-        });
+            console.log(`BindID AuthenticateExchange Token Failed: ${error.message}`);
+            setHasError(true);
+            setErrorMessage(error.message);
+            setIsLoading(false);        });
     }
 
-    private handleExchangeResponseResponse = async (response: XmBindIdExchangeTokenResponse): Promise<void> => {
-
+    const handleExchangeResponseResponse = async (response: XmBindIdExchangeTokenResponse): Promise<void> => {
         console.log(`idToken: ${response.idToken}`);
 
         if (!response.idToken) {
             console.log("Invalid response returned from authentication");
-            return this.handleMessageError(`Invalid response returned from authentication: ${response}`);
+            return handleMessageError(`Invalid response returned from authentication: ${response}`);
         }
 
         const idToken = response.idToken;
         if (!idToken) {
             console.log("Invalid ID Token" + idToken);
-            return this.handleMessageError("Invalid ID Token" + idToken);
+            return handleMessageError("Invalid ID Token" + idToken);
         }
 
         // Once we receive the ID Token response we should verify the validity of the token
         const isValid = await XmBindIdSdk.validate(idToken, env.getHostName(env.BindIDEnvironmentMode));
         if (!isValid) {
             console.log("Invalid ID Token");
-            return this.handleMessageError("Invalid ID Token");
+            return handleMessageError("Invalid ID Token");
         }
 
         //Parse the ID Token to components and present them on a Flat List
         const passportData = await XmBindIdSdk.parse(idToken);
         if (!passportData) {
             console.log("Error parsing ID Token");
-            return this.handleMessageError("Error parsing ID Token");
+            return handleMessageError("Error parsing ID Token");
         }
 
         const json = JSON.stringify(passportData);
         console.log(`Passport ${json}`);
 
-        const passportDataArray = Utils.jsonObjectToArray(passportData)
+        const passportDataArray = jsonObjectToArray(passportData)
         console.log(`passportDataArray ${passportDataArray}`);
 
-        this.setState({
-            isLoading: false,
-            sortedPassportKeys: passportDataArray,
-            passportData: passportData
-        });
-
+        setIsLoading(false);
+        setSortedPassportKeys(passportDataArray);
+        setPassportData(passportData);
     }
 
-    // Render UI
+    const handleMessageError = (error: string): void => {
+        setHasError(true);
+        setErrorMessage(error);
+        setIsLoading(false);
+    }
 
-    private renderLoading = (): React.ReactElement => {
+    if (isLoading) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large"/>
@@ -145,42 +109,33 @@ export class AuthenticatedUserScreen extends React.Component<AuthenticatedUserSc
         );
     }
 
-    private renderError = (): React.ReactElement => {
+    if (hasError) {
         return (
             <View style={styles.container}>
-                <Text>{this.state.errorMessage}</Text>
+                <Text>{errorMessage}</Text>
             </View>
-        )
+        );
     }
 
-    private renderPassportRow = (item: PassportItem): React.ReactElement => {
-        return (
-            <View>
-                <View style={styles.listItem}>
-                    <Text style={styles.itemTitle}>{item.title}</Text>
-                    <Text style={styles.itemValue}>{item.value}</Text>
-                </View>
-                <View style={styles.separator}/>
-            </View>
-        )
-    }
-
-    // Handle Errors
-    private handleError(error: XmBindIdError): void {
-        this.setState({
-            hasError: true,
-            errorMessage: error.message,
-            isLoading: false
-        });
-    }
-
-    private handleMessageError(error: string): void {
-        this.setState({
-            hasError: true,
-            errorMessage: error,
-            isLoading: false
-        });
-    }
+    return (
+        <SafeAreaView style={styles.container}>
+            <FlatList
+                data={items}
+                renderItem={({item}) => (
+                    <View>
+                        <View style={styles.listItem}>
+                            <Text style={styles.itemTitle}>{item.title}</Text>
+                            <Text style={styles.itemValue}>{item.value}</Text>
+                        </View>
+                        <View style={styles.separator}/>
+                    </View>
+                )}
+                keyExtractor={({title}) => {
+                    return title
+                }}
+            />
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -210,3 +165,5 @@ const styles = StyleSheet.create({
         marginLeft: "2%"
     }
 });
+
+export default AuthenticatedUserScreen;

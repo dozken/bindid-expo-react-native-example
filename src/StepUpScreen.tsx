@@ -1,12 +1,9 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {ActivityIndicator, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import type {NavigationStackProp} from 'react-navigation-stack';
-
-import env from './env';
 import style from './style';
 
 import XmBindIdSdk from '@transmitsecurity/bindid-react-native';
-
 import {
     XmBindIdAuthenticationRequest,
     XmBindIdError,
@@ -16,57 +13,26 @@ import {
     XmBindIdTransactionSigningDisplayData,
     XmBindIdTransactionSigningRequest
 } from "@transmitsecurity/bindid-react-native/src/transmit-bind-id-api";
+import env from "./env";
 
-type StepUpScreenProps = {
+interface Props {
     navigation: NavigationStackProp<{}>;
-};
-
-interface State {
-    authenticationInProgress: boolean;
-    isAuthenticationError: boolean;
-    errorMessage: string;
 }
 
-export class StepUpScreen extends React.Component<StepUpScreenProps, State> {
+const StepUpScreen: React.FC<Props> = ({navigation}) => {
+    const [authenticationInProgress, setAuthenticationInProgress] = useState(false);
+    const [isAuthenticationError, setIsAuthenticationError] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
-    constructor(props: StepUpScreenProps) {
-        super(props);
-
-        this.state = {
-            authenticationInProgress: false,
-            isAuthenticationError: false,
-            errorMessage: ""
-        };
-    }
-
-    render() {
-        return (
-            <SafeAreaView style={styles.container}>
-                <Image
-                    style={styles.brandingLogo}
-                    source={require('./assets/img/transmit_logo.png')}
-                />
-                <View style={styles.authenticateButtonContainer}>
-                    {this.renderAuthenticateButton()}
-                </View>
-                {(this.state.isAuthenticationError) ? <Text style={styles.errorMessage}>Error authenticating with
-                    BindID: {this.state.errorMessage}</Text> : null}
-            </SafeAreaView>
-        );
-    }
-
-    private authenticateWithBindID = async (): Promise<void> => {
+    const authenticateWithBindID = async (): Promise<void> => {
         /**
          * redirectURI: A valid URL that will be triggered by the BindID serviec. The app should be able to support handling it
          * usePkce: This enables using a PKCE flow (RFC-7636) to securely obtain the ID and access token through the client.
          * scope: openId is the default configuration, you can also add .email, .networkInfo, .phone
          */
-
-        this.setState({
-            authenticationInProgress: false,
-            isAuthenticationError: false,
-            errorMessage: ""
-        });
+        setAuthenticationInProgress(false);
+        setIsAuthenticationError(false);
+        setErrorMessage('');
 
         const request: XmBindIdAuthenticationRequest = {
             redirectUri: env.RedirectURI,
@@ -77,28 +43,25 @@ export class StepUpScreen extends React.Component<StepUpScreenProps, State> {
         XmBindIdSdk.authenticate(request)
             .then((response: XmBindIdResponse) => {
                 console.log(`BindID Authentication Completed: ${JSON.stringify(response)}`);
-                this.handleAuthenticationResponse(response);
+                handleAuthenticationResponse(response);
             }).catch((error: XmBindIdError) => {
             console.log(`BindID Authentication Failed: ${JSON.stringify(error)}`);
-            this.handleAuthenticationError(error);
+            handleAuthenticationError(error);
         });
     }
 
-    private signTransactionBindID = async (): Promise<void> => {
+    const signTransactionBindID = async (): Promise<void> => {
         /**
          * redirectURI: A valid URL that will be triggered by the BindID serviec. The app should be able to support handling it
          * usePkce: This enables using a PKCE flow (RFC-7636) to securely obtain the ID and access token through the client.
          * scope: openId is the default configuration, you can also add .email, .networkInfo, .phone
          */
-
-        this.setState({
-            authenticationInProgress: false,
-            isAuthenticationError: false,
-            errorMessage: ""
-        });
+        setAuthenticationInProgress(false);
+        setIsAuthenticationError(false);
+        setErrorMessage('');
 
         const displayData: XmBindIdTransactionSigningDisplayData = {
-            payee: "Jonh Depp",
+            payee: "John Doe",
             paymentAmount: "100$",
             paymentMethod: "PayPal"
         };
@@ -117,60 +80,64 @@ export class StepUpScreen extends React.Component<StepUpScreenProps, State> {
         XmBindIdSdk.signTransaction(request)
             .then((response: XmBindIdResponse) => {
                 console.log(`BindID Sign Transaction Completed: ${JSON.stringify(response)}`);
-                this.handleAuthenticationResponse(response);
+                handleAuthenticationResponse(response);
             }).catch((error: XmBindIdError) => {
             console.log(`BindID Sign Transaction Failed: ${JSON.stringify(error)}`);
-            this.handleAuthenticationError(error);
+            handleAuthenticationError(error);
         });
     }
 
-
-    private handleAuthenticationResponse = async (response: XmBindIdResponse): Promise<void> => {
-
-        this.setState({isAuthenticationError: false, errorMessage: "", authenticationInProgress: false});
+    const handleAuthenticationResponse = async (response: XmBindIdResponse): Promise<void> => {
+        setAuthenticationInProgress(false);
+        setIsAuthenticationError(false);
+        setErrorMessage('');
 
         // After validation of the token we can navigate to the Authenticated User Screen and present the token data
-        this.props.navigation.navigate('AuthenticatedUserScreen', {response: response});
+        navigation.navigate('AuthenticatedUserScreen', {response: response});
     }
 
-    private handleAuthenticationError(error: XmBindIdError): void {
-        this.setState({
-            isAuthenticationError: true,
-            errorMessage: `${error.code} ${error.message}`,
-            authenticationInProgress: false
-        });
+    const handleAuthenticationError = (error: XmBindIdError): void => {
+        setAuthenticationInProgress(false);
+        setIsAuthenticationError(true);
+        setErrorMessage(`${error.code} ${error.message}`);
     }
 
-    private renderAuthenticateButton = (): React.ReactElement => {
-        if (this.state.authenticationInProgress) {
-            return (<ActivityIndicator size="small"/>);
-        }
-
-        return (
-            <View style={{flexDirection: "column"}}>
-                <View>
-                    <TouchableOpacity onPress={() => this.authenticateWithBindID()}>
-                        <View style={styles.authenticateButton}>
-                            <Text style={styles.authenticateButtonText}>
-                                Step-Up
-                            </Text>
+    return (
+        <SafeAreaView style={styles.container}>
+            <Image
+                style={styles.brandingLogo}
+                source={require('./assets/img/transmit_logo.png')}
+            />
+            <View style={styles.authenticateButtonContainer}>
+                {authenticationInProgress
+                    ? <ActivityIndicator size="small"/>
+                    : <View style={{flexDirection: "column"}}>
+                        <View>
+                            <TouchableOpacity onPress={() => authenticateWithBindID()}>
+                                <View style={styles.authenticateButton}>
+                                    <Text style={styles.authenticateButtonText}>
+                                        Step-Up
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
-                    </TouchableOpacity>
-                </View>
-                <View>
-                    <TouchableOpacity onPress={() => this.signTransactionBindID()}>
-                        <View style={styles.authenticateButton}>
-                            <Text style={styles.authenticateButtonText}>
-                                Transaction
-                            </Text>
+                        <View>
+                            <TouchableOpacity onPress={() => signTransactionBindID()}>
+                                <View style={styles.authenticateButton}>
+                                    <Text style={styles.authenticateButtonText}>
+                                        Transaction
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
                         </View>
-                    </TouchableOpacity>
-                </View>
+                    </View>
+                }
             </View>
-
-
-        );
-    }
+            {isAuthenticationError &&
+                <Text style={styles.errorMessage}>Error authenticating with BindID: {errorMessage}</Text>
+            }
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -207,3 +174,5 @@ const styles = StyleSheet.create({
         color: "red"
     }
 });
+
+export default StepUpScreen;
