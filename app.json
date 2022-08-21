@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "BindIdExpoReactNativeExample",
+    "android": {
+      "package": "com.dozken.bindidexporeactnative"
+    },
+    "ios": {
+      "bundleIdentifier": "com.dozken.bindidexporeactnative"
+    }
+  }
+}

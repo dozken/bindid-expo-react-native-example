@@ -1,0 +1,34 @@
+{
+  "description": "Example app for bindid-react-native with Expo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "clean:ios": "cd ios && rm -rf build && cd ..",
+    "clean:android": "cd android && ./gradlew clean && cd .."
+  },
+  "dependencies": {
+    "@react-navigation/native": "^6.0.6",
+    "@react-navigation/native-stack": "^6.2.5",
+    "@transmitsecurity/bindid-react-native": "^1.0.1",
+    "react": "17.0.2",
+    "react-native": "0.68.2",
+    "react-native-safe-area-context": "^3.3.2",
+    "react-native-screens": "^3.9.0",
+    "react-navigation-stack": "^2.10.4",
+    "expo": "~45.0.0",
+    "expo-splash-screen": "~0.15.1",
+    "expo-status-bar": "~1.3.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.10",
+    "@babel/runtime": "^7.12.5",
+    "@types/react": "18.0.17",
+    "@types/react-native": "0.69.5",
+    "babel-plugin-module-resolver": "^4.0.0",
+    "metro-react-native-babel-preset": "^0.64.0",
+    "typescript": "~4.3.5"
+  }
+}
